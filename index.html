@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>David Print Studio</title>
+    <link rel="icon" href="data:," />
+    <style>
+      :root {
+        --bg: #1c1c1c;
+        --fg: #e6e6e6;
+        --line: rgba(255, 255, 255, 0.9);
+        --mask: rgba(0, 0, 0, 0.55);
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--bg);
+        color: var(--fg);
+        font: 12px/1.4 system-ui, sans-serif;
+        overflow: hidden;
+      }
+      #stage {
+        position: fixed;
+        inset: 0;
+      }
+      #stage canvas {
+        display: block;
+      }
+      /* Media box (incl. bleed). Everything outside is masked. */
+      .crop-media {
+        position: absolute;
+        box-shadow: 0 0 0 100vmax var(--mask);
+        outline: 1px solid var(--line);
+        pointer-events: none;
+      }
+      .crop-trim {
+        position: absolute;
+        outline: 1px solid rgba(255, 80, 80, 0.9);
+      }
+      .crop-safe {
+        position: absolute;
+        outline: 1px dashed rgba(120, 200, 255, 0.85);
+      }
+      .crop-label {
+        position: absolute;
+        left: 0;
+        top: 100%;
+        margin-top: 4px;
+        white-space: nowrap;
+        color: var(--fg);
+        opacity: 0.8;
+      }
+      #status {
+        position: fixed;
+        left: 8px;
+        bottom: 6px;
+        opacity: 0.85;
+        pointer-events: none;
+      }
+      .print-panel {
+        position: fixed;
+        left: 8px;
+        top: 8px;
+        bottom: 28px;
+        width: min(46vw, 720px);
+        background: #111;
+        border: 1px solid #444;
+        padding: 8px;
+        z-index: 20;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        overflow: auto;
+      }
+      .print-panel[hidden] {
+        display: none;
+      }
+      .print-panel-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .print-panel-body canvas,
+      .print-panel-body img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        image-rendering: auto;
+      }
+      .print-panel pre {
+        margin: 0;
+        white-space: pre-wrap;
+        font: 11px/1.4 ui-monospace, monospace;
+      }
+      .print-panel button {
+        margin-right: 6px;
+      }
+      .print-panel-close {
+        position: absolute;
+        right: 6px;
+        top: 4px;
+      }
+      #banner {
+        position: fixed;
+        left: 50%;
+        top: 8px;
+        transform: translateX(-50%);
+        background: #b33;
+        color: #fff;
+        padding: 4px 10px;
+        border-radius: 3px;
+        z-index: 10;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <div id="banner" hidden></div>
+    <div id="status">loading…</div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
