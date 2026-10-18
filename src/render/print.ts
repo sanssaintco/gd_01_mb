@@ -1,11 +1,12 @@
-// Connects the viewer's framing and studio to tiled render jobs: print preview, full-resolution
+// Connects the viewer's framing, lens and look to tiled render jobs: print preview, full-resolution
 // render, seam test. Keeps the last full-resolution result for the PDF export.
 
 import type { PageGeometry } from '../config/page';
 import type { RenderConfig } from '../config/render';
 import type { Viewer } from '../viewer/viewer';
+import { makePasses } from './passes';
 import { runSeamTest } from './seamTest';
-import { type RenderJob, type RenderResult, makePasses, renderRegion } from './tiler';
+import { type RenderJob, type RenderResult, renderRegion } from './tiler';
 
 /** 'auto': next power of two ≥ the image's long side, 2048…8192 (A4 → 4096, A2 → 8192). */
 export function printShadowMapSize(setting: RenderConfig['printShadowMap'], width: number, height: number) {
@@ -39,6 +40,7 @@ export class PrintRenderer {
         tiles: this.cfg.tiles,
         maxTilePixels: this.cfg.maxTileMegapixels * 1e6,
         shadowMapSize: printShadowMapSize(this.cfg.printShadowMap, W, H),
+        passes: makePasses(this.cfg.passes),
         onProgress,
       }),
     );
@@ -47,18 +49,21 @@ export class PrintRenderer {
   }
 
   seamTest() {
-    return this.run(() => runSeamTest(this.baseJob(), this.cfg.seamTest));
+    return this.run(() =>
+      runSeamTest({ ...this.baseJob(), passes: makePasses(this.cfg.seamTest.passes) }, this.cfg.seamTest),
+    );
   }
 
-  private baseJob(): Omit<RenderJob, 'globalWidth' | 'globalHeight' | 'tiles'> {
+  private baseJob(): Omit<RenderJob, 'globalWidth' | 'globalHeight' | 'tiles' | 'passes'> {
     const c = this.cfg;
     return {
       renderer: this.viewer.renderer,
       studio: this.viewer.studio,
       camera: this.viewer.makePrintCamera(),
       samples: c.msaaSamples,
-      passes: makePasses(c.passes),
-      tone: c.tone,
+      lens: this.viewer.lensState(),
+      look: this.viewer.preset.look,
+      bloomBaseLongSide: c.bloomBaseLongSide,
       dither: c.dither,
     };
   }

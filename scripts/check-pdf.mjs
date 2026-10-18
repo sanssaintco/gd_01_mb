@@ -1,7 +1,10 @@
-// Structural PDF/X-4 / K-only checker for the exported file, plus the external tools found on
-// this machine (qpdf, poppler, PyMuPDF ink check). Not a replacement for Acrobat/callas preflight.
+// Structural PDF/X-4 checker for the exported file, plus the external tools found on this machine
+// (qpdf, poppler, PyMuPDF ink check). Not a replacement for Acrobat/callas preflight.
+// Image: DeviceCMYK (the default colour model) or DeviceGray; text and vector art K only.
+// The ink check enforces TAC ≤ 300 %; with --k-only (automatic when every image is DeviceGray)
+// also no ink on C, M, Y.
 //
-//   node scripts/check-pdf.mjs <file.pdf> [--expect A2] [--no-tools]
+//   node scripts/check-pdf.mjs <file.pdf> [--expect A2] [--k-only] [--no-tools]
 
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -278,6 +281,8 @@ for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.det
 const failed = checks.filter((c) => !c.ok).length;
 console.log(`\n${failed ? `${failed} check(s) FAILED` : `all ${checks.length} structural checks passed`}`);
 
+// K-only ink verdict: forced with --k-only, automatic when every image is DeviceGray.
+const kOnly = process.argv.includes('--k-only') || (images.length > 0 && images.every((im) => im.colorSpace === '/DeviceGray'));
 if (runTools) runExternalTools(file);
 process.exitCode = failed ? 1 : 0;
 
@@ -353,12 +358,12 @@ function runExternalTools(pdf) {
     console.log((r.stdout + r.stderr).trim() || `(exit ${r.status}, no output)`);
   }
   const python = process.platform === 'win32' ? 'py' : 'python3';
-  for (const [title, script] of [
-    ['PyMuPDF ink check (render to CMYK)', 'inkcheck.py'],
+  for (const [title, script, ...extra] of [
+    ['PyMuPDF ink check (render to CMYK)', 'inkcheck.py', ...(kOnly ? ['--k-only'] : [])],
     ['fontTools glyph check of embedded fonts', 'fontcheck.py'],
   ]) {
     console.log(`\n--- ${title} ---`);
-    const py = spawnSync(python, ['-I', path.join(here, script), pdf], { encoding: 'utf8' });
+    const py = spawnSync(python, ['-I', path.join(here, script), pdf, ...extra], { encoding: 'utf8' });
     console.log((py.stdout + py.stderr).trim() || `(exit ${py.status})`);
   }
 }

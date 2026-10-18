@@ -1,5 +1,6 @@
 // Seam test: renders the same view once as one image (no view offset) and again in tiles, then
-// compares them. Pixels in a 2 px band along the internal tile borders are reported separately
+// compares them. Both use the full pipeline: the same accumulation passes (jittered lens, lights,
+// sub-pixel), bloom on the stitched frame, tone curve and dither. Pixels in a 2 px band along the internal tile borders are reported separately
 // from the interior: a seam shows up as a band that is worse than the interior.
 //
 // Verdict: a seam is a discontinuity along a tile border, so it shows as a spike in the mean |Δ|
@@ -16,7 +17,7 @@
 
 import { grayToPngDataUrl } from './image';
 import { type RenderJob, renderRegion } from './tiler';
-import { makeToneMapper, toneValue } from './tone';
+import { makeToneMapper, toneOfExposed } from './tone';
 
 export interface GroupStats {
   mean: number;
@@ -44,9 +45,9 @@ export interface SeamCase {
   grid: [number, number];
   tileSize: [number, number];
   globalShadowNoise: boolean;
-  /** Tone-mapped, unrounded, undithered (in 8-bit units): the sensitive metric. */
+  /** Tone index, unrounded, undithered (in 8-bit units): the sensitive metric. */
   continuous: DiffStats;
-  /** The actual dithered 8-bit output. */
+  /** The actual dithered 8-bit tone index. */
   output8: DiffStats;
   /** Mean continuous |Δ| per column (x) and per row (y): a seam shows as a spike at a border. */
   profile: { x: number[]; y: number[] };
@@ -87,8 +88,8 @@ export async function runSeamTest(
   const H = cfg.height;
   const common = { ...base, globalWidth: W, globalHeight: H, keepLinear: true, onProgress: undefined };
   const ref = await renderRegion({ ...common, tiles: { cols: 1, rows: 1 }, noViewOffset: true });
-  const tone = makeToneMapper(base.tone);
-  const refCont = Float32Array.from(ref.linear!, (v) => toneValue(tone, v));
+  const tone = makeToneMapper(base.look.tone);
+  const refCont = Float32Array.from(ref.linear!, (v) => toneOfExposed(tone, v));
   const isObject = objectMask(refCont);
 
   const variants: Array<{ label: string; grid: [number, number]; globalShadowNoise: boolean; misalign?: number }> = [];
@@ -115,9 +116,9 @@ export async function runSeamTest(
       const zone = makeZones(W, H, tw, th);
 
       const cont = new Float32Array(W * H);
-      for (let i = 0; i < cont.length; i++) cont[i] = Math.abs(toneValue(tone, t.linear![i]) - refCont[i]);
+      for (let i = 0; i < cont.length; i++) cont[i] = Math.abs(toneOfExposed(tone, t.linear![i]) - refCont[i]);
       const out8 = new Float32Array(W * H);
-      for (let i = 0; i < out8.length; i++) out8[i] = Math.abs(t.gray[i] - ref.gray[i]);
+      for (let i = 0; i < out8.length; i++) out8[i] = Math.abs(t.tone[i] - ref.tone[i]);
 
       const continuous = diffStats(cont, W, H, zone, isObject, 0.5);
       const output8 = diffStats(out8, W, H, zone, isObject, 1);

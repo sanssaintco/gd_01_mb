@@ -26,7 +26,8 @@ export function patchMaterialForTiling(material: THREE.Material): boolean {
     shader.uniforms.uTileOrigin = origin;
     shader.fragmentShader = shader.fragmentShader.replace('#include <shadowmap_pars_fragment>', patchedChunk);
   };
-  material.customProgramCacheKey = () => 'tile-origin-v1';
+  const previousKey = material.customProgramCacheKey.bind(material);
+  material.customProgramCacheKey = () => `${previousKey()}|tile-origin-v1`;
   material.needsUpdate = true;
   patched.add(material);
   return true;

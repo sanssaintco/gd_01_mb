@@ -10,6 +10,8 @@ import { buildXmp } from './xmp';
 export interface PdfxMeta {
   title: string;
   author: string;
+  /** Optional Info /Subject = XMP dc:description; empty = omitted. */
+  subject?: string;
   creator: string;
   producer: string;
   date: Date;
@@ -54,11 +56,13 @@ export function writeMetadata(doc: PDFDocument, m: PdfxMeta) {
     GTS_PDFXVersion: literal('PDF/X-4'),
   });
   if (m.author) info.set(PDFName.of('Author'), PDFHexString.fromText(m.author));
+  if (m.subject) info.set(PDFName.of('Subject'), PDFHexString.fromText(m.subject));
   ctx.trailerInfo.Info = ctx.register(info);
 
   const xmp = buildXmp({
     title: m.title,
     author: m.author,
+    subject: m.subject,
     creatorTool: m.creator,
     producer: m.producer,
     createDate: dates.xmp,

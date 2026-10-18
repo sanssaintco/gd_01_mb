@@ -28,19 +28,23 @@ export class CropOverlay {
   private trim: HTMLDivElement;
   private safe: HTMLDivElement;
   private label: HTMLDivElement;
+  private appLabel: HTMLDivElement;
 
   constructor(parent: HTMLElement, private page: PageGeometry) {
     this.el = div('crop-media');
     this.trim = div('crop-trim');
     this.safe = div('crop-safe');
-    this.label = div('crop-label');
-    this.el.append(this.trim, this.safe, this.label);
+    // Technical label for the dev mode, short one for the app (CSS shows one of them).
+    this.label = div('crop-label crop-label-dev');
+    this.appLabel = div('crop-label crop-label-app');
+    this.el.append(this.trim, this.safe, this.label, this.appLabel);
     parent.append(this.el);
     const s = page.spec;
     this.label.textContent =
       `${s.name} ${s.trimW_mm}×${s.trimH_mm} mm · bleed ${s.bleed_mm} mm → ` +
       `${page.mediaW_mm}×${page.mediaH_mm} mm · ${page.pxW}×${page.pxH} px @ ${s.dpi} dpi · ` +
       `safety ${s.safety_mm} mm`;
+    this.appLabel.textContent = `Poster ${s.name} · ${s.trimW_mm} × ${s.trimH_mm} mm · red line = paper edge after trimming`;
   }
 
   layout(r: OverlayRect) {

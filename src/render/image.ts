@@ -1,5 +1,5 @@
-// Helpers for inspecting the 8-bit gray result: histogram stats, downscaling, crops, PNG previews.
-// PNG previews are display-only (canvas PNGs are RGB); the PDF embeds the raw gray buffer.
+// Helpers for inspecting 8-bit results (the tone index, gray diff images): histogram stats,
+// downscaling, crops, PNG previews. Previews are display-only; the PDF embeds its own samples.
 
 export interface GrayStats {
   min: number;
@@ -76,4 +76,26 @@ export function grayToCanvas(g: Uint8Array, w: number, h: number): HTMLCanvasEle
 
 export function grayToPngDataUrl(g: Uint8Array, w: number, h: number): string {
   return grayToCanvas(g, w, h).toDataURL('image/png');
+}
+
+/** 8-bit index image through an RGB palette (256 × 3 bytes), e.g. the tone index → ramp colours. */
+export function indexToCanvas(idx: Uint8Array, w: number, h: number, palette: Uint8Array): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  const img = ctx.createImageData(w, h);
+  for (let i = 0, j = 0; i < idx.length; i++, j += 4) {
+    const p = idx[i] * 3;
+    img.data[j] = palette[p];
+    img.data[j + 1] = palette[p + 1];
+    img.data[j + 2] = palette[p + 2];
+    img.data[j + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  return canvas;
+}
+
+export function indexToPngDataUrl(idx: Uint8Array, w: number, h: number, palette: Uint8Array): string {
+  return indexToCanvas(idx, w, h, palette).toDataURL('image/png');
 }

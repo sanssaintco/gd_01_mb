@@ -3,11 +3,16 @@
 import { ASSETS } from './assets';
 
 /**
- * DeviceGray: image and text in DeviceGray, which a PDF/X-4 workflow with a CMYK output intent
- * prints on the K plate only. CMYK-K: the same content as DeviceCMYK with C = M = Y = 0, in case
- * a preflight insists on "CMYK" literally. Both are K-only.
+ * CMYK (default): the image as DeviceCMYK through the output profile (FOGRA39, relative
+ * colorimetric), so the ramp's warm/cool tints print; text and signature stay 100 % K.
+ * Fallbacks, K plate only: DeviceGray (image and text in DeviceGray, which a PDF/X-4 workflow
+ * with a CMYK output intent prints on K) and CMYK-K (the same as DeviceCMYK with C = M = Y = 0).
+ * In both, the K plate alone reproduces the ramp's lightness; tints are lost.
  */
-export type ColorModel = 'DeviceGray' | 'CMYK-K';
+export type ColorModel = 'CMYK' | 'DeviceGray' | 'CMYK-K';
+
+/** localStorage key (bumped when the default colour model changed to CMYK). */
+export const EXPORT_STORAGE_KEY = 'export.v2';
 
 export interface ExportConfig {
   filename: string;
@@ -29,7 +34,7 @@ export const DEFAULT_EXPORT: ExportConfig = {
   filename: 'Nachname_Matrikel-Nr_Projektname.pdf',
   title: 'Michelangelo Buonarroti – David',
   author: '',
-  colorModel: 'DeviceGray',
+  colorModel: 'CMYK',
   outputIntent: {
     iccUrl: ASSETS.icc,
     outputConditionIdentifier: 'FOGRA39',

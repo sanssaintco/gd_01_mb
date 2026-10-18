@@ -1,10 +1,12 @@
 // XMP metadata packet for PDF/X-4. Every value that also exists in the Info dictionary (title,
-// author, creator tool, producer, dates, trapped) is passed in once and written to both, so they
+// author, subject, creator tool, producer, dates, trapped) is passed in once and written to both, so they
 // cannot drift apart.
 
 export interface DocMeta {
   title: string;
   author: string;
+  /** Info /Subject ↔ dc:description. */
+  subject?: string;
   creatorTool: string;
   producer: string;
   /** XMP notation, identical instant to the Info dictionary dates. */
@@ -19,6 +21,9 @@ export function buildXmp(m: DocMeta): Uint8Array {
   const creator = m.author
     ? `\n      <dc:creator><rdf:Seq><rdf:li>${e(m.author)}</rdf:li></rdf:Seq></dc:creator>`
     : '';
+  const description = m.subject
+    ? `\n      <dc:description><rdf:Alt><rdf:li xml:lang="x-default">${e(m.subject)}</rdf:li></rdf:Alt></dc:description>`
+    : '';
   const xml = `<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
 <x:xmpmeta xmlns:x="adobe:ns:meta/">
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
@@ -29,7 +34,7 @@ export function buildXmp(m: DocMeta): Uint8Array {
         xmlns:xmpMM="http://ns.adobe.com/xap/1.0/mm/"
         xmlns:pdfxid="http://www.npes.org/pdfx/ns/id/">
       <dc:format>application/pdf</dc:format>
-      <dc:title><rdf:Alt><rdf:li xml:lang="x-default">${e(m.title)}</rdf:li></rdf:Alt></dc:title>${creator}
+      <dc:title><rdf:Alt><rdf:li xml:lang="x-default">${e(m.title)}</rdf:li></rdf:Alt></dc:title>${creator}${description}
       <xmp:CreateDate>${m.createDate}</xmp:CreateDate>
       <xmp:ModifyDate>${m.modifyDate}</xmp:ModifyDate>
       <xmp:MetadataDate>${m.modifyDate}</xmp:MetadataDate>

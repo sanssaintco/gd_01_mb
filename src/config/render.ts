@@ -1,24 +1,6 @@
-// Print render settings: tile grid, MSAA, accumulation passes, tone curve, dither.
-
-export interface ToneConfig {
-  /** Exposure applied to linear luminance before encoding. */
-  exposureEV: number;
-  /**
-   * Levels, on the sRGB-encoded value (0..1). At the defaults the print matches the live viewer.
-   * inBlack/inWhite clip the input, gamma bends the midtones (>1 brighter), outBlack/outWhite set
-   * the output range (0 = 100 % K, 1 = paper white).
-   */
-  inBlack: number;
-  inWhite: number;
-  gamma: number;
-  outBlack: number;
-  outWhite: number;
-  /**
-   * Optional dot-gain pre-compensation: DeviceGray goes to the K plate 1:1, so midtones print
-   * darker by the press's tone value increase (TVI). Parabolic TVI model peaking at 50 %.
-   */
-  dotGain: { enabled: boolean; tvi50: number };
-}
+// Print render settings: tile grid, MSAA, accumulation passes, bloom resolution, dither. The look
+// itself (tone curve, ramp, bloom amount) is the studio preset's (config/scene.ts → look), shared
+// with the live viewer.
 
 export interface RenderConfig {
   /**
@@ -39,33 +21,29 @@ export interface RenderConfig {
   printShadowMap: 'auto' | 2048 | 4096 | 8192;
   msaaSamples: number;
   /**
-   * Accumulation passes per tile. 1 = single pass. >1 is reserved for jittered-camera DOF/AA,
-   * which is not implemented yet.
+   * Accumulation passes (anti-aliasing, depth of field, key-light area, dome directions), the same
+   * sequence as the live viewer. More passes = smoother soft shadows and bokeh, linear in time.
    */
   passes: number;
-  tone: ToneConfig;
-  /** TPDF dither against banding: peak amplitude in 8-bit steps (LSB); 0 = off. */
+  /** Bloom is computed at this long side and upsampled (it is low-frequency). */
+  bloomBaseLongSide: number;
+  /** TPDF dither on the 8-bit tone index against banding, peak amplitude in steps; 0 = off. */
   dither: { amplitude: number; seed: number };
   /** Scale of the on-screen print preview relative to full resolution. */
   previewScale: number;
-  seamTest: { width: number; height: number; grids: Array<[number, number]> };
+  seamTest: { width: number; height: number; grids: Array<[number, number]>; passes: number };
 }
+
+/** localStorage key (bumped when the shape or meaning changes, so stale values don't load). */
+export const RENDER_STORAGE_KEY = 'render.v2';
 
 export const DEFAULT_RENDER: RenderConfig = {
   tiles: { cols: 2, rows: 2 },
   maxTileMegapixels: 2.5,
   printShadowMap: 'auto',
   msaaSamples: 4,
-  passes: 1,
-  tone: {
-    exposureEV: 0,
-    inBlack: 0,
-    inWhite: 1,
-    gamma: 1,
-    outBlack: 0,
-    outWhite: 1,
-    dotGain: { enabled: false, tvi50: 0.15 },
-  },
+  passes: 32,
+  bloomBaseLongSide: 2048,
   dither: { amplitude: 1, seed: 1 },
   previewScale: 0.25,
   seamTest: {
@@ -77,5 +55,6 @@ export const DEFAULT_RENDER: RenderConfig = {
       [2, 2],
       [3, 3],
     ],
+    passes: 8,
   },
 };

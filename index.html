@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>David Print Studio</title>
+    <title>David Poster Studio</title>
     <link rel="icon" href="data:," />
     <style>
       :root {
@@ -58,6 +58,14 @@
         bottom: 6px;
         opacity: 0.85;
         pointer-events: none;
+      }
+      #accum {
+        position: fixed;
+        right: 8px;
+        bottom: 6px;
+        opacity: 0.7;
+        pointer-events: none;
+        font-variant-numeric: tabular-nums;
       }
       .print-panel {
         position: fixed;
@@ -115,12 +123,256 @@
         border-radius: 3px;
         z-index: 10;
       }
+      /* ---------- Layout: app panel docked left, stage fills the rest ---------- */
+      :root {
+        --panel-w: 296px;
+        --app-bg: #151515;
+        --app-fg: #e7e5e2;
+        --app-muted: #8f8b86;
+        --app-line: #2a2928;
+        --app-accent: #deddde; /* the poster's brightest tone */
+        --app-accent-ink: #2b2a28; /* the poster's darkest tone */
+      }
+      #stage {
+        left: var(--panel-w);
+        overflow: hidden;
+      }
+      .app-panel {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: var(--panel-w);
+        box-sizing: border-box;
+        padding: 22px 22px 18px;
+        overflow-y: auto;
+        background: var(--app-bg);
+        border-right: 1px solid var(--app-line);
+        color: var(--app-fg);
+        font: 13px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif;
+        z-index: 15;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+      }
+      .app-title {
+        font-size: 26px;
+        font-weight: 300;
+        letter-spacing: 0.02em;
+      }
+      .app-sub {
+        color: var(--app-muted);
+        font-size: 12px;
+      }
+      .app-section h2 {
+        margin: 0 0 10px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--app-muted);
+      }
+      .app-section h3 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .app-hint {
+        margin: 2px 0 8px;
+        color: var(--app-muted);
+        font-size: 12px;
+      }
+      .app-field {
+        display: block;
+        margin: 0 0 10px;
+        font-size: 12px;
+      }
+      .app-field input {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 4px;
+        padding: 7px 9px;
+        font: inherit;
+        font-size: 13px;
+        color: var(--app-fg);
+        background: #1d1c1b;
+        border: 1px solid #3a3937;
+        border-radius: 3px;
+      }
+      .app-field input:focus {
+        outline: none;
+        border-color: var(--app-muted);
+      }
+      .app-filename {
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+      .app-filename.is-ready {
+        color: var(--app-fg);
+      }
+      .app-light {
+        padding: 12px 0 4px;
+        border-top: 1px solid var(--app-line);
+      }
+      .app-light:first-of-type {
+        border-top: 0;
+        padding-top: 0;
+      }
+      .app-slider {
+        display: block;
+        margin: 6px 0 10px;
+      }
+      .app-slider-top {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+      }
+      .app-slider-value {
+        color: var(--app-muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .app-slider input[type='range'] {
+        width: 100%;
+        margin: 6px 0 0;
+        appearance: none;
+        background: transparent;
+        height: 18px;
+        cursor: pointer;
+      }
+      .app-slider input[type='range']::-webkit-slider-runnable-track {
+        height: 2px;
+        background: #3a3937;
+      }
+      .app-slider input[type='range']::-moz-range-track {
+        height: 2px;
+        background: #3a3937;
+      }
+      .app-slider input[type='range']::-webkit-slider-thumb {
+        appearance: none;
+        width: 14px;
+        height: 14px;
+        margin-top: -6px;
+        border-radius: 50%;
+        background: var(--app-accent);
+        border: 0;
+      }
+      .app-slider input[type='range']::-moz-range-thumb {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--app-accent);
+        border: 0;
+      }
+      .app-slider input[type='range']:focus-visible {
+        outline: 1px solid var(--app-muted);
+        outline-offset: 2px;
+      }
+      /* Export stays in reach: pinned to the bottom while the panel scrolls. */
+      .app-foot {
+        margin-top: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        position: sticky;
+        bottom: -18px;
+        margin-bottom: -18px;
+        padding: 14px 0 18px;
+        background: var(--app-bg);
+        border-top: 1px solid var(--app-line);
+      }
+      .app-btn {
+        font: inherit;
+        padding: 11px 14px;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      .app-btn-primary {
+        background: var(--app-accent);
+        color: var(--app-accent-ink);
+        border: 0;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      .app-btn-primary:hover {
+        background: #fff;
+      }
+      .app-btn-primary:disabled {
+        opacity: 0.5;
+        cursor: progress;
+      }
+      .app-btn-ghost {
+        background: transparent;
+        color: var(--app-fg);
+        border: 1px solid #3a3937;
+      }
+      .app-btn-ghost:hover {
+        border-color: var(--app-muted);
+      }
+      .app-progress-track {
+        height: 2px;
+        background: #3a3937;
+      }
+      .app-progress-bar {
+        height: 100%;
+        width: 0;
+        background: var(--app-accent);
+        transition: width 0.2s;
+      }
+      .app-progress-text {
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--app-muted);
+        overflow-wrap: anywhere;
+      }
+      .app-progress.is-error .app-progress-text {
+        color: #e07a6a;
+      }
+      .app-progress[hidden] {
+        display: none;
+      }
+      /* ---------- App vs. developer mode ---------- */
+      body:not(.dev) #status,
+      body:not(.dev) .crop-label-dev,
+      body.dev .crop-label-app,
+      body:not(.dev) .crop-safe {
+        display: none;
+      }
+      #status {
+        left: calc(var(--panel-w) + 8px);
+      }
+      /* Dev mode: keep the poster clear of the lil-gui panel (245 px wide, top right). */
+      body.dev #stage {
+        right: 250px;
+      }
+      .print-panel {
+        left: calc(var(--panel-w) + 8px) !important;
+      }
+      /* Narrow screens: panel becomes a bottom sheet. */
+      @media (max-width: 760px) {
+        :root {
+          --panel-w: 0px;
+        }
+        #stage {
+          bottom: 46vh;
+        }
+        .app-panel {
+          top: auto;
+          height: 46vh;
+          width: 100%;
+          border-right: 0;
+          border-top: 1px solid var(--app-line);
+          padding: 16px;
+        }
+      }
     </style>
   </head>
   <body>
     <div id="stage"></div>
+    <div id="app"></div>
     <div id="banner" hidden></div>
     <div id="status">loading…</div>
+    <div id="accum"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -6,9 +6,10 @@
 //   node scripts/headless.mjs preview [...]
 //   node scripts/headless.mjs seams  [...]
 //   node scripts/headless.mjs render [...]
-//   node scripts/headless.mjs export [--icc <url>] [--color-model DeviceGray|CMYK-K] [--to <dir>] [...]
+//   node scripts/headless.mjs export [--icc <url>] [--color-model CMYK|DeviceGray|CMYK-K] [--to <dir>] [...]
 //
-// viewer: waits until the model is loaded, prints load stats + WebGL renderer, saves a screenshot.
+// viewer: waits until the model is loaded and the accumulation has converged (--first: after the
+//         first sharp pass), prints load stats + WebGL renderer, saves a screenshot.
 // preview: runs the print preview (as the GUI button does) and screenshots the page.
 // seams:  one-piece vs. tiled render comparison; saves the diff image.
 // render: full-resolution tiled render; saves a 25 % preview and a 1:1 crop at the tile junction.
@@ -19,6 +20,7 @@
 //   --dist         the production build in dist/ (run `npm run build` first), served under
 //                  /gd_01_mb/ like GitHub Pages serves it
 //   --url <site>   an already deployed site, e.g. https://sanssaintco.github.io/gd_01_mb/
+// Mode: --dev opens the developer mode (?dev).
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -88,6 +90,7 @@ try {
   });
 
   const q = new URLSearchParams({ fresh: '1' });
+  if (flag('--dev')) q.set('dev', '1');
   if (flag('--placeholder')) q.set('model', 'placeholder');
   if (opt('--stl')) q.set('stl', opt('--stl'));
   if (opt('--icc')) q.set('icc', opt('--icc'));
@@ -103,14 +106,33 @@ try {
   if (camera) await page.evaluate((s) => window.__app.viewer.setCameraState(JSON.parse(s)), camera);
   // --setup '<js>': experiment hook, runs in the page with `app` = window.__app before the action.
   const setup = opt('--setup');
-  if (setup) await page.evaluate((src) => new Function('app', src)(window.__app), setup);
+  if (setup) await page.evaluate((src) => new (Object.getPrototypeOf(async () => {}).constructor)('app', src)(window.__app), setup);
 
   if (action === 'viewer') {
-    // Two frames so the first render (incl. shadow map) is on screen.
-    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    // Wait until the accumulation has converged (all passes at rest), or two frames with --first.
+    if (flag('--first')) {
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    } else {
+      const t1 = Date.now();
+      await page.waitForFunction(
+        () => window.__app.viewer.accumulated >= window.__app.preset.viewer.passes,
+        null,
+        { timeout: 300_000, polling: 100 },
+      );
+      info.msConverge = Date.now() - t1;
+    }
     const tag = opt('--name', info.model?.isPlaceholder ? 'placeholder' : 'david');
     const shot = path.join(outDir, `viewer-${tag}.png`);
-    await page.screenshot({ path: shot });
+    // --crop: only the print frame (the crop overlay's media box).
+    // The overlay rect is relative to #stage, which starts right of the app panel.
+    const clip = flag('--crop')
+      ? await page.evaluate(() => {
+          const r = window.__app.viewer.rect;
+          const s = document.getElementById('stage').getBoundingClientRect();
+          return { x: s.left + r.left, y: s.top + r.top, width: r.width, height: r.height };
+        })
+      : undefined;
+    await page.screenshot({ path: shot, clip: clip && { x: clip.x, y: clip.y, width: clip.width, height: clip.height } });
     info.screenshot = shot;
   } else if (action === 'preview') {
     // Same path as the "Print preview" button; screenshot of the page with the panel open.
@@ -145,7 +167,7 @@ try {
     const mem = await page.evaluate(() => performance.memory?.usedJSHeapSize);
     info.render = {
       stats: rep.stats,
-      gray: rep.gray,
+      tone: rep.tone,
       jsHeapMB: mem ? Math.round(mem / 2 ** 20) : undefined,
       preview: savePng(rep.preview, `render-${opt('--name', 'full')}-25pct.png`),
       junction: { x: rep.junction.x, y: rep.junction.y, png: savePng(rep.junction.png, `render-${opt('--name', 'full')}-junction.png`) },
@@ -153,6 +175,10 @@ try {
   } else {
     throw new Error(`unknown action "${action}"`);
   }
+
+  // --eval '<js>': experiment hook (async, may await), runs after the action with `app`; its return value goes to info.eval.
+  const evalSrc = opt('--eval');
+  if (evalSrc) info.eval = await page.evaluate((src) => new (Object.getPrototypeOf(async () => {}).constructor)('app', src)(window.__app), evalSrc);
 
   console.log(JSON.stringify(info, null, 2));
 } finally {
